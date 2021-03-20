@@ -11,21 +11,22 @@ class Courier(models.Model):
 
     courier_id = models.IntegerField(primary_key=True)
     courier_type = models.CharField(max_length=4, choices=COURIER_TYPE_CHOICES)
-    regions = models.JSONField()
-    working_hours = models.JSONField()
-    rating = models.FloatField(null=True)
-    earnings = models.IntegerField()
+    regions = models.JSONField(default=list, blank=True, null=True) # todo: integer validation
+    working_hours = models.JSONField(default=list, blank=True, null=True) # todo: string validation
 
 
 class Order(models.Model):
+    COURIER_TYPE_CHOICES = (
+        ("foot", "foot"),
+        ("bike", "bike"),
+        ("car", "car"),
+    )
+
     order_id = models.IntegerField(primary_key=True)
-    courier_id = models.ForeignKey(Courier.courier_id)
-
-
-class OrderItem(models.Model):
-    item_id = models.IntegerField(primary_key=True)
-    order_id = models.ForeignKey(Order.order_id, on_delete=models.CASCADE)
-    weight = models.FloatField()
+    weight = models.FloatField() # todo: validate 0.01 <= x <= 50
     region = models.IntegerField()
-    delivery_hours = models.JSONField()
-
+    delivery_hours = models.JSONField(default=list, blank=True, null=True)  # todo: string validation
+    courier_id = models.ForeignKey(Courier, on_delete=models.CASCADE)
+    assign_time = models.DateTimeField(auto_now=False, null=True) # "yyyy-MM-ddTHH:mm:ssZ" .strftime("%Y-%m-%d%H:%M:%S")
+    complete_time = models.DateTimeField(auto_now=False, null=True)
+    courier_type = models.CharField(max_length=4, choices=COURIER_TYPE_CHOICES, null=True) # todo: repeating choices???
