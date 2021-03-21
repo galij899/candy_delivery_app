@@ -35,8 +35,17 @@ class OrderManager(models.Manager):
         else:
             return [], None
 
-    def complete_order(self):
-        return None
+    def complete_order(self, data): # todo: починить этот позорный говнокод
+        order = Order.objects.get(pk=data.get("order_id")) # todo: fix repeating
+        if order:
+            if data.get("courier_id") == order.courier_id_id: # todo: fix id_id
+                order.complete_time=data.get("complete_time")
+                order.save(update_fields=['complete_time'])
+                return True
+            else:
+                return False
+        else:
+            return False
 
 
 class Courier(models.Model):

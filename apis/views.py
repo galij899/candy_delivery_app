@@ -19,7 +19,7 @@ class CourierView(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data["data"], many=isinstance(request.data["data"], list))
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True) # todo: create same validation for all requests
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(success_post(serializer.data, "courier"), status=status.HTTP_201_CREATED, headers=headers)
@@ -52,5 +52,9 @@ class OrderView(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def complete(self, request):
-        
-        return Response()
+        result = Order.test_man.complete_order(request.data)
+        # print(result)
+        if result: # todo: use serializer
+            return Response(json.dumps({"order_id": request.data.get("order_id")}))
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST) # todo: 400 empty body?
