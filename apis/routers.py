@@ -8,7 +8,7 @@ class CourierRouter(routers.SimpleRouter):
                      'patch': 'partial_update'}, # todo: validate only correct fields
             name='{basename}-detail',
             detail=True,
-            initkwargs={'suffix': 'Detail'}
+            initkwargs={'suffix': 'Detail'} # todo: what is a detail
         ),
         routers.Route(
             url=r'^{prefix}$',
@@ -19,3 +19,19 @@ class CourierRouter(routers.SimpleRouter):
         ),
     ]
 
+class OrdersRouter(routers.SimpleRouter):
+    routes = [
+        routers.DynamicRoute(
+            url=r'^{prefix}/{url_path}$',
+            name='{basename}-{url_name}',
+            detail=True,
+            initkwargs={}
+        ),
+        routers.Route(
+            url=r'^{prefix}$',
+            mapping={'post': 'create'},
+            name='{basename}-detail',
+            detail=True,
+            initkwargs={'suffix': 'Detail'}
+        )
+    ]
