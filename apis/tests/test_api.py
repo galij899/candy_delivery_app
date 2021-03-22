@@ -5,7 +5,7 @@ class ApiTest(TestCase):
     def test_setUp(self):
         self.client = Client()
 
-    def test_postCouriers(self):
+    def test_postCouriers_correct(self):
         data = {
                 "data": [
                     {
@@ -37,3 +37,6 @@ class ApiTest(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(json.loads(response.content), correct_response)
+
+    def test_postCouriers_correct(self):
+

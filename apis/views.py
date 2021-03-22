@@ -1,7 +1,7 @@
 from .models import Courier, Order, OrderManager
 from rest_framework.response import Response
 from rest_framework import viewsets, views, permissions
-from .serializers import CourierSerializer, OrderSerializer, OrderIdSerializer
+from .serializers import CourierSerializer, OrderSerializer, OrderIdSerializer, CourierPostSerializer
 from rest_framework import status
 from rest_framework.decorators import action
 import datetime
@@ -14,15 +14,21 @@ def success_post(data, basename):
 
 class CourierView(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
-    serializer_class = CourierSerializer
+    serializer_class = CourierPostSerializer
     permission_classes = [permissions.AllowAny]
 
+    def perform_create(self, serializer):
+        return {'couriers': [{'id': instance.get('courier_id')} for instance in serializer.save().get("data")]}
+
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data["data"], many=isinstance(request.data["data"], list))
-        serializer.is_valid(raise_exception=True) # todo: create same validation for all requests
-        self.perform_create(serializer)
+        serializer = CourierPostSerializer(data=request.data, context={"i": 1})
+        if not serializer.is_valid(raise_exception=False): # todo: create same validation for all requests
+            validation_errors = {"validation_error": serializer.errors["data"]}
+            return Response(validation_errors, status=status.HTTP_400_BAD_REQUEST)
+        result = self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(success_post(serializer.data, "courier"), status=status.HTTP_201_CREATED, headers=headers)
+        return Response(result, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class OrderView(viewsets.ModelViewSet):
     queryset = Order.objects.all()

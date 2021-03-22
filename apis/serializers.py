@@ -1,6 +1,7 @@
 from.models import *
 from rest_framework import serializers
 from .models import Courier
+from rest_framework.exceptions import ValidationError
 
 class CourierSerializer(serializers.ModelSerializer): # todo: correct order of fields
     rating = serializers.SerializerMethodField()
@@ -29,6 +30,32 @@ class CourierSerializer(serializers.ModelSerializer): # todo: correct order of f
             rep.pop('earnings')
 
         return rep
+
+class CourierSer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Courier
+        fields = '__all__'
+
+    def run_validation(self, data): # todo: make a mixin and prettify
+        try:
+            valid = super().run_validation(data)
+            return valid
+        except ValidationError as e:
+            # check if it's a list. This error is not linked to one piece of data.
+            if data.__class__ is [].__class__:
+                raise e
+            primary_key_field_name = self.Meta.model._meta.pk.name
+            raise ValidationError({"id": data[primary_key_field_name]})
+
+class CourierPostSerializer(serializers.Serializer):
+    data = CourierSer(many=True)
+
+    def create(self, validated_data):
+        couriers = validated_data['data']
+        for courier in couriers:
+            Courier.objects.create(**courier)
+        return validated_data
 
 
 class OrderSerializer(serializers.ModelSerializer):
