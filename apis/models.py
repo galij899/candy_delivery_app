@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F, ExpressionWrapper, DurationField, Avg, Min, Count
 import datetime
 
 
@@ -38,7 +39,7 @@ class OrderManager(models.Manager):
     def complete_order(self, data): # todo: починить этот позорный говнокод
         order = Order.objects.get(pk=data.get("order_id")) # todo: fix repeating
         if order:
-            if data.get("courier_id") == order.courier_id_id: # todo: fix id_id
+            if data.get("courier_id") == order.courier_id:
                 order.complete_time=data.get("complete_time")
                 order.save(update_fields=['complete_time'])
                 return True
@@ -47,6 +48,33 @@ class OrderManager(models.Manager):
         else:
             return False
 
+class CourierManager(models.Manager):
+    def rating(self, courier_id):
+        try:
+            t = Order.objects\
+                     .filter(courier_id=courier_id)\
+                     .annotate(diff=ExpressionWrapper(F('complete_time')-F('assign_time'), output_field=DurationField()))\
+                     .values('region')\
+                     .annotate(Avg('diff'))\
+                     .aggregate(Min('diff__avg'))
+            real_t = round(t["diff__avg__min"].total_seconds()) # todo: prettify orm query
+            rating = (60 * 60 - min(real_t, 60 * 60)) / (60 * 60) * 5
+            return rating
+        except:
+            return None
+
+    def earnings(self, courier_id):
+        coefs = {'foot': 2,
+                 'bike': 5,
+                 'car': 9}
+
+        earn = Order.objects\
+                    .filter(courier_id=courier_id, complete_time__isnull=False)\
+                    .values('courier_type')\
+                    .annotate(Count('order_id'))
+        earnings = sum(500 * [item.get('order_id__count') * coefs.get(item.get('courier_type')) for item in earn]) # todo: make more effective calculations
+
+        return earnings if earnings != 0 else None
 
 class Courier(models.Model):
     COURIER_TYPE_CHOICES = (
@@ -60,6 +88,9 @@ class Courier(models.Model):
     regions = models.JSONField(default=list, blank=True, null=True) # todo: integer validation
     working_hours = models.JSONField(default=list, blank=True, null=True) # todo: string validation
 
+    add_funcs = CourierManager()
+    objects = models.Manager()
+
 
 class Order(models.Model):
     COURIER_TYPE_CHOICES = (
@@ -72,7 +103,7 @@ class Order(models.Model):
     weight = models.FloatField() # todo: validate 0.01 <= x <= 50
     region = models.IntegerField()
     delivery_hours = models.JSONField(default=list, blank=True, null=True)  # todo: string validation
-    courier_id = models.ForeignKey(Courier, on_delete=models.CASCADE, blank=True, null=True)
+    courier = models.ForeignKey(Courier, on_delete=models.CASCADE, blank=True, null=True)
     assign_time = models.DateTimeField(auto_now=False, blank=True, null=True) # "yyyy-MM-ddTHH:mm:ssZ" .strftime("%Y-%m-%d%H:%M:%S")
     complete_time = models.DateTimeField(auto_now=False, blank=True, null=True)
     courier_type = models.CharField(max_length=4, choices=COURIER_TYPE_CHOICES, blank=True, null=True) # todo: repeating choices???

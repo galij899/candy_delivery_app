@@ -24,11 +24,6 @@ class CourierView(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(success_post(serializer.data, "courier"), status=status.HTTP_201_CREATED, headers=headers)
 
-    def retrieve(self, request, *args, **kwargs): # todo: create logic for earnings and rating
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-
 class OrderView(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
