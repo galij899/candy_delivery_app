@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 import json
 from .validators.schemes import CouriersPostValidator
 
+
 # Create your views here.
 
 def success_post(data, basename):

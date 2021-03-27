@@ -1,7 +1,10 @@
 from django.db import models
-from django.db.models import F, ExpressionWrapper, DurationField, Avg, Min, Count
+from django.db.models import F, ExpressionWrapper, DurationField, Avg, Min, Count, Func, Window
+from django.db.models.functions.window import Lag
 from django.core.validators import MinValueValidator, MaxValueValidator
 import datetime
+
+from django.db import connection
 
 
 def select_orders_by_weight(d, max_weight): # todo: prettify this function
@@ -40,7 +43,7 @@ class OrderManager(models.Manager):
             return orders, batch.assign_time
         else:
             try:
-                orders = Order.objects.filter(region__in=courier.regions, courier_id__isnull=True) \
+                orders = Order.objects.filter(region__in=courier.regions, batch_id__isnull=True) \
                                     .order_by("weight")
             except:
                 return []
@@ -66,31 +69,32 @@ class OrderManager(models.Manager):
 
 class CourierManager(models.Manager):
     def rating(self, courier_id):
-        try:
-            t = Order.objects\
-                     .filter(courier_id=courier_id)\
-                     .annotate(diff=ExpressionWrapper(F('complete_time')-F('assign_time'), output_field=DurationField()))\
-                     .values('region')\
-                     .annotate(Avg('diff'))\
-                     .aggregate(Min('diff__avg'))
-            real_t = round(t["diff__avg__min"].total_seconds()) # todo: prettify orm query
-            rating = (60 * 60 - min(real_t, 60 * 60)) / (60 * 60) * 5
-            return rating
-        except:
-            return None
+        """
+        Эффективный запрос на получение рейтинга, быстрее и проще, чем ORM от Django
+        """
+        query = f"""SELECT MIN(region_avg) FROM
+                    (SELECT AVG(extract(epoch from (finish::timestamp - start::timestamp))) as region_avg FROM
+                    (SELECT region, complete_time as finish,
+                           CASE
+                            WHEN row_number() OVER(PARTITION BY region ORDER BY complete_time ASC) = 1 THEN assign_time
+                            ELSE LAG(complete_time) OVER(PARTITION BY region ORDER BY complete_time ASC)
+                            END
+                            AS start
+                    FROM apis_order LEFT JOIN apis_batch ab on apis_order.batch_id = ab.batch_id
+                    WHERE ab.is_complete = True AND courier_id = {courier_id}) as sub
+                    GROUP BY region) as mins;"""
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            t = cursor.fetchone()[0]
+        return (60*60 - min(t, 60*60))/(60*60) * 5 if t else None
 
     def earnings(self, courier_id):
         coefs = {'foot': 2,
                  'bike': 5,
                  'car': 9}
 
-        earn = Order.objects\
-                    .filter(courier_id=courier_id, complete_time__isnull=False)\
-                    .values('courier_type')\
-                    .annotate(Count('order_id'))
-        earnings = sum(500 * [item.get('order_id__count') * coefs.get(item.get('courier_type')) for item in earn]) # todo: make more effective calculations
-
-        return earnings if earnings != 0 else None
+        batches = Batch.objects.filter(courier_id=courier_id, is_complete=True)
+        return 500 * sum([coefs.get(key) for key in batches.values_list("courier_type", flat=True)])
 
 class Courier(models.Model):
     COURIER_TYPE_CHOICES = (
