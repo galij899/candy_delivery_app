@@ -1,14 +1,15 @@
 from rest_framework import routers
 
+
 class CourierRouter(routers.SimpleRouter):
     routes = [
         routers.Route(
             url=r'^{prefix}/{lookup}$',
             mapping={'get': 'retrieve',
-                     'patch': 'partial_update'}, # todo: validate only correct fields
+                     'patch': 'partial_update'},
             name='{basename}-detail',
             detail=True,
-            initkwargs={'suffix': 'Detail'} # todo: what is a detail
+            initkwargs={'suffix': 'Details'}
         ),
         routers.Route(
             url=r'^{prefix}$',
@@ -18,6 +19,7 @@ class CourierRouter(routers.SimpleRouter):
             initkwargs={'suffix': 'Detail'}
         ),
     ]
+
 
 class OrdersRouter(routers.SimpleRouter):
     routes = [

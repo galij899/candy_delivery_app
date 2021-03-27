@@ -1,17 +1,12 @@
-from .models import Courier, Order, OrderManager
-from rest_framework.response import Response
-from rest_framework import viewsets, views, permissions
-from .serializers import CourierSerializer, OrderSerializer, OrderIdSerializer, CourierPostSerializer, OrderPostSerializer
 from rest_framework import status
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
-import json
-from .validators.schemes import CouriersPostValidator
+from rest_framework.response import Response
 
+from .models import Courier, Order
+from .serializers import CourierSerializer, OrderSerializer, OrderIdSerializer, CourierPostSerializer, \
+    OrderPostSerializer
 
-# Create your views here.
-
-def success_post(data, basename):
-    return {f"{basename}s": [{"id": data[item].get(f"{basename}_id")} for item in range(len(data))]}
 
 class CourierView(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
@@ -20,8 +15,8 @@ class CourierView(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
 
-        if not set(request.data.keys()).issubset(set(["courier_type", "regions", "working_hours"])):
-            return Response(status = status.HTTP_400_BAD_REQUEST)
+        if not set(request.data.keys()).issubset({"courier_type", "regions", "working_hours"}):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -59,18 +54,10 @@ class CourierView(viewsets.ModelViewSet):
                         headers=headers)
 
 
-
 class OrderView(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.AllowAny]
-
-    # def create(self, request, *args, **kwargs): # todo: add as a mixin
-    #     serializer = self.get_serializer(data=request.data["data"], many=isinstance(request.data["data"], list))
-    #     serializer.is_valid(raise_exception=True)
-    #     self.perform_create(serializer)
-    #     headers = self.get_success_headers(serializer.data)
-    #     return Response(success_post(serializer.data, "order"), status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         return {'orders': [{'id': instance.get('order_id')} for instance in serializer.save().get("data")]}
@@ -105,8 +92,9 @@ class OrderView(viewsets.ModelViewSet):
             orders, time = result
             serializer = OrderIdSerializer(orders, many=True)
             headers = self.get_success_headers(serializer.data)
-            return Response(data={"orders": serializer.data, "assign_time": time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + "Z"},
-                            headers=headers)
+            return Response(
+                data={"orders": serializer.data, "assign_time": time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + "Z"},
+                headers=headers)
 
     @action(detail=True, methods=["post"])
     def complete(self, request):

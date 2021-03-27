@@ -1,6 +1,7 @@
 from django.test import Client, TestCase
 import json
 
+
 class ApiTest(TestCase):
     def test_setUp(self):
         self.client = Client()
