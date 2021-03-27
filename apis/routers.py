@@ -3,7 +3,7 @@ from rest_framework import routers
 class CourierRouter(routers.SimpleRouter):
     routes = [
         routers.Route(
-            url=r'^{prefix}/{lookup}{trailing_slash}$',
+            url=r'^{prefix}/{lookup}$',
             mapping={'get': 'retrieve',
                      'patch': 'partial_update'}, # todo: validate only correct fields
             name='{basename}-detail',

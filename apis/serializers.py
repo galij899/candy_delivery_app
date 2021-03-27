@@ -38,7 +38,11 @@ class CourierSer(serializers.ModelSerializer):
         fields = '__all__'
 
     def run_validation(self, data): # todo: make a mixin and prettify
+        """
+        Overriding default method to save only pk of errors
+        """
         try:
+            print("inside", data)
             valid = super().run_validation(data)
             return valid
         except ValidationError as e:
@@ -46,7 +50,26 @@ class CourierSer(serializers.ModelSerializer):
             if data.__class__ is [].__class__:
                 raise e
             primary_key_field_name = self.Meta.model._meta.pk.name
+
+            # print("Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name], e.detail))
+
             raise ValidationError({"id": data[primary_key_field_name]})
+
+    def validate_regions(self, data):
+        print("iii")
+        if not isinstance(data, list):
+            raise ValidationError('not a list')
+        elif not all([isinstance(item, int) for item in data]):
+            raise ValidationError('not list of integers')
+        elif not all([item > 0 for item in data]):
+            raise ValidationError('not positive numbers')
+        return data
+
+    def validate(self, data):
+        print(1, data, self.context)
+        if not data.keys() == self.get_fields().keys():
+            raise ValidationError("unexpected request fields")
+        return data
 
 class CourierPostSerializer(serializers.Serializer):
     data = CourierSer(many=True)
@@ -62,7 +85,35 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        exclude = ('courier_id', 'assign_time', 'complete_time', 'courier_type',)
+        fields = ("order_id", "weight", "region", "delivery_hours")
+
+    def run_validation(self, data): # todo: make a mixin and prettify
+        """
+        Overriding default method to save only pk of errors
+        """
+        try:
+            print("inside", data)
+            valid = super().run_validation(data)
+            return valid
+        except ValidationError as e:
+            # check if it's a list. This error is not linked to one piece of data.
+            if data.__class__ is [].__class__:
+                raise e
+            primary_key_field_name = self.Meta.model._meta.pk.name
+
+            print("Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name], e.detail))
+
+            raise ValidationError({"id": data[primary_key_field_name]})
+
+class OrderPostSerializer(serializers.Serializer):
+    data = OrderSerializer(many=True)
+
+    def create(self, validated_data):
+        orders = validated_data['data']
+        for order in orders:
+            Order.objects.create(**order)
+        return validated_data
+
 
 class OrderIdSerializer(serializers.ModelSerializer):
 
@@ -70,6 +121,16 @@ class OrderIdSerializer(serializers.ModelSerializer):
         model = Order
         fields = ("order_id",)
 
+    def to_representation(self, instance):
+        prev = super().to_representation(instance)
+        return {"id": prev.get("order_id")}
+
 class OrderAssignResponse(serializers.Serializer):
     orders = OrderIdSerializer(many=True)
     # assign_time = serializers.CharField()
+
+class BatchSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Batch
+        fields = '__all__'
