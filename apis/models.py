@@ -1,6 +1,7 @@
 import itertools
 import time
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import connection
 from django.db import models
@@ -128,8 +129,8 @@ class Courier(models.Model):
 
     courier_id = models.PositiveIntegerField(primary_key=True, blank=False)
     courier_type = models.CharField(max_length=4, choices=COURIER_TYPE_CHOICES, blank=False)
-    regions = models.JSONField(blank=False)
-    working_hours = models.JSONField(blank=False)
+    regions = ArrayField(base_field=models.IntegerField(null=False, blank=False), blank=False)
+    working_hours = ArrayField(base_field=models.CharField(max_length=15), blank=False)
 
     add_funcs = CourierManager()
     objects = models.Manager()
@@ -155,7 +156,7 @@ class Order(models.Model):
                                  validators=[MinValueValidator(0.01), MaxValueValidator(50)],
                                  blank=False)  # todo: fix 0.01 validation
     region = models.PositiveIntegerField(blank=False)
-    delivery_hours = models.JSONField(blank=False)
+    delivery_hours = ArrayField(base_field=models.CharField(max_length=15), blank=False)
     complete_time = models.DateTimeField(auto_now=False, blank=True, null=True)
     batch = models.ForeignKey(Batch, on_delete=models.PROTECT, blank=True, null=True)
 

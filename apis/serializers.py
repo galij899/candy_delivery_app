@@ -14,16 +14,16 @@ class RunValidationMixin:
         Overriding default method to save only pk of errors
         """
         try:
-            valid = super().run_validation()
+            valid = super().run_validation(data)
             return valid
         except ValidationError as e:
             # check if it's a list. This error is not linked to one piece of data.
             if data.__class__ is [].__class__:
                 raise e
             primary_key_field_name = self.Meta.model._meta.pk.name
-            # print("Entity {0} : {1}. Caused by : {2}"
-            # .format(primary_key_field_name, data[primary_key_field_name], e.detail))
             raise ValidationError({"id": data[primary_key_field_name]})
+                # "Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name],
+                #                                            e.detail))
 
 class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of fields
     rating = serializers.SerializerMethodField()
