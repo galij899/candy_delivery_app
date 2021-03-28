@@ -5,6 +5,26 @@ from .models import *
 from .models import Courier
 
 
+class RunValidationMixin:
+    """
+    Миксин для получения primary-key проблемной строки при валидации входных данных вместо ошибки
+    """
+    def run_validation(self, data):
+        """
+        Overriding default method to save only pk of errors
+        """
+        try:
+            valid = super().run_validation()
+            return valid
+        except ValidationError as e:
+            # check if it's a list. This error is not linked to one piece of data.
+            if data.__class__ is [].__class__:
+                raise e
+            primary_key_field_name = self.Meta.model._meta.pk.name
+            # print("Entity {0} : {1}. Caused by : {2}"
+            # .format(primary_key_field_name, data[primary_key_field_name], e.detail))
+            raise ValidationError({"id": data[primary_key_field_name]})
+
 class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of fields
     rating = serializers.SerializerMethodField()
     earnings = serializers.SerializerMethodField()
@@ -34,29 +54,12 @@ class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of 
         return rep
 
 
-class CourierSer(serializers.ModelSerializer):
+class CourierSer(RunValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Courier
         fields = '__all__'
 
-    def run_validation(self, data):
-        """
-        Overriding default method to save only pk of errors
-        """
-        try:
-            valid = super().run_validation()
-            return valid
-        except ValidationError as e:
-            # check if it's a list. This error is not linked to one piece of data.
-            if data.__class__ is [].__class__:
-                raise e
-            primary_key_field_name = self.Meta.model._meta.pk.name
-
-            # print("Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name], e.detail))
-            raise ValidationError({"id": data[primary_key_field_name]})
-
     def validate_regions(self, data):
-        print("iii")
         if not isinstance(data, list):
             raise ValidationError('not a list')
         elif not all([isinstance(item, int) for item in data]):
@@ -66,7 +69,6 @@ class CourierSer(serializers.ModelSerializer):
         return data
 
     def validate(self, data):
-        print(1, data, self.context)
         if not data.keys() == self.get_fields().keys():
             raise ValidationError("unexpected request fields")
         return data
@@ -82,30 +84,10 @@ class CourierPostSerializer(serializers.Serializer):
         return validated_data
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(RunValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ("order_id", "weight", "region", "delivery_hours")
-
-    def run_validation(self, data):
-        """
-        Overriding default method to save only pk of errors
-        """
-        try:
-            print("inside", data)
-            valid = super().run_validation(data)
-            return valid
-        except ValidationError as e:
-            # check if it's a list. This error is not linked to one piece of data.
-            if data.__class__ is [].__class__:
-                raise e
-            primary_key_field_name = self.Meta.model._meta.pk.name
-
-            # print("Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name],
-            #                                                  e.detail))
-
-            raise ValidationError({"id": data[primary_key_field_name]})
-
 
 class OrderPostSerializer(serializers.Serializer):
     data = OrderSerializer(many=True)
