@@ -39,7 +39,7 @@ class CourierSer(serializers.ModelSerializer):
         model = Courier
         fields = '__all__'
 
-    def run_validation(self, data):  # todo: make a mixin and prettify
+    def run_validation(self, data):
         """
         Overriding default method to save only pk of errors
         """
@@ -87,7 +87,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ("order_id", "weight", "region", "delivery_hours")
 
-    def run_validation(self, data):  # todo: make a mixin and prettify
+    def run_validation(self, data):
         """
         Overriding default method to save only pk of errors
         """

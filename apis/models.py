@@ -1,22 +1,26 @@
-from django.db import models
+import itertools
+import time
+
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import connection
+from django.db import models
+from django.db.models import Sum, Window, F
 
 
-def select_orders_by_weight(d, max_weight):  # todo: prettify this function
-    ids = sorted(d, key=d.get)
-    s = 0
-    ls = []
-    for id_ in ids:
-        if s + d.get(id_) < max_weight:
-            s += d.get(id_)
-            ls.append(id_)
-        else:
-            break
-    return ls  # s, ls, [d.get(i) for i in ls]
+def timecheck(a, b):
+    l1, h1 = time.strptime(a[:5], "%H:%M"), time.strptime(a[6:], "%H:%M")
+    l2, h2 = time.strptime(b[:5], "%H:%M"), time.strptime(b[6:], "%H:%M")
+    return l1 < h2 and h1 > l2
+
+
+def select_orders_by_time(work, delivery):
+    return any([timecheck(*pair) for pair in itertools.product(work, delivery)])
 
 
 class OrderManager(models.Manager):
+    max_weight = {'foot': 10,
+                  'bike': 15,
+                  'car': 50}
 
     def check_batches(self, **kwargs):  # todo: fix it
         try:
@@ -25,11 +29,21 @@ class OrderManager(models.Manager):
             go = None
         return go
 
-    def assign_order(self, courier_id):  # todo: correct order setting algorithm
-        max_weight = {'foot': 10,
-                      'bike': 15,
-                      'car': 50}
+    def check_after_update(self, courier):
+        batch = self.check_batches(courier_id=courier.courier_id, is_complete=False)
+        if batch:
+            orders = Order.objects.filter(batch_id=batch.batch_id, region__in=courier.regions)
+            orders = [order.order_id for order in orders if
+                      select_orders_by_time(courier.working_hours, order.delivery_hours)]
+            weighted = Order.objects.filter(order_id__in=orders).annotate(sum_weight=Window(expression=Sum('weight'),
+                                                                                            order_by=F("weight").asc()))
+            good_orders = [i.order_id for i in weighted if i.sum_weight <= self.max_weight.get(courier.courier_type)]
 
+            Order.objects.filter(batch_id=batch.batch_id) \
+                .exclude(order_id__in=good_orders) \
+                .update(batch_id=None)
+
+    def assign_order(self, courier_id):  # todo: correct order setting algorithm
         try:
             courier = Courier.objects.get(pk=courier_id)
         except:
@@ -44,8 +58,17 @@ class OrderManager(models.Manager):
                     .order_by("weight")
             except:
                 return []
-            correct_ids = select_orders_by_weight({i.order_id: i.weight for i in orders},
-                                                  max_weight.get(courier.courier_type))
+
+            orders = [order.order_id for order in orders if
+                      select_orders_by_time(courier.working_hours, order.delivery_hours)]
+
+            if not orders:
+                return []
+
+            weighted = Order.objects.filter(order_id__in=orders).annotate(sum_weight=Window(expression=Sum('weight'),
+                                                                                            order_by=F("weight").asc()))
+            correct_ids = [i.order_id for i in weighted if i.sum_weight <= self.max_weight.get(courier.courier_type)]
+
             good = Order.objects.filter(pk__in=correct_ids)
             batch = Batch.objects.create(courier_id=courier.courier_id,
                                          courier_type=courier.courier_type)
@@ -134,7 +157,7 @@ class Order(models.Model):
     region = models.PositiveIntegerField(blank=False)
     delivery_hours = models.JSONField(blank=False)
     complete_time = models.DateTimeField(auto_now=False, blank=True, null=True)
-    batch = models.ForeignKey(Batch, on_delete=models.PROTECT, blank=True, null=True)  # todo: on delete
+    batch = models.ForeignKey(Batch, on_delete=models.PROTECT, blank=True, null=True)
 
     objects = models.Manager()
     test_man = OrderManager()
