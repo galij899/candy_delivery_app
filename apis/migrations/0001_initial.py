@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             name='Order',
             fields=[
                 ('order_id', models.PositiveIntegerField(primary_key=True, serialize=False)),
-                ('weight', models.DecimalField(decimal_places=2, max_digits=4, validators=[django.core.validators.MinValueValidator(0.01), django.core.validators.MaxValueValidator(50)])),
+                ('weight', models.DecimalField(decimal_places=2, max_digits=4, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(50)])),
                 ('region', models.PositiveIntegerField()),
                 ('delivery_hours', django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=15), size=None)),
                 ('complete_time', models.DateTimeField(blank=True, null=True)),

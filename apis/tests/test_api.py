@@ -130,7 +130,7 @@ class ApiInputTests(TestCase):
     def test_postOrders_correct(self):
         data = {
             "data": [
-                {"order_id": 1, "weight": 0.23, "region": 12, "delivery_hours": ["09:00-18:00"]},
+                {"order_id": 1, "weight": 0.14, "region": 12, "delivery_hours": ["09:00-18:00"]},
                 {"order_id": 2, "weight": 50, "region": 1, "delivery_hours": ["09:00-18:00"]},
                 {"order_id": 3, "weight": 0.02, "region": 22, "delivery_hours": ["09:00-12:00", "16:00-21:30"]},
                 {"order_id": 10, "weight": 3.7, "region": 33, "delivery_hours": ["07:00-09:00"]},
@@ -142,6 +142,24 @@ class ApiInputTests(TestCase):
 
         correct_response = {
             "orders": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 10}, {"id": 11}, {"id": 12}, {"id": 14}]
+        }
+
+        response = self.client.post(path='/orders',
+                                    data=data,
+                                    content_type="application/json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(json.loads(response.content), correct_response)
+
+    def test_postOrders_minvalue(self):
+        data = {
+            "data": [
+                {"order_id": 234, "weight": 0.01, "region": 12, "delivery_hours": ["09:00-18:00"]},
+               ]
+        }
+
+        correct_response = {
+            "orders": [{"id": 234},]
         }
 
         response = self.client.post(path='/orders',
@@ -171,12 +189,18 @@ class ApiInputTests(TestCase):
                     "region": 1,
                     "delivery_hours": [3]
                 },
+                {
+                    "order_id": 112,
+                    "weight": 0.005,
+                    "region": 1,
+                    "delivery_hours": ["08:00-19:00"]
+                },
             ]
         }
 
         correct_response = {
             "validation_error": {
-                "orders": [{"id": 4}, {"id": 5}]
+                "orders": [{"id": 4}, {"id": 5}, {"id": 112}]
             }
         }
 

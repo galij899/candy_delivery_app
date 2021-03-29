@@ -23,12 +23,12 @@ class OrderManager(models.Manager):
                   'bike': 15,
                   'car': 50}
 
-    def check_batches(self, **kwargs):  # todo: fix it
+    def check_batches(self, **kwargs):
         try:
-            go = Batch.objects.get(**kwargs)
+            batch = Batch.objects.get(**kwargs)
         except Batch.DoesNotExist:
-            go = None
-        return go
+            batch = None
+        return batch
 
     def check_after_update(self, courier):
         batch = self.check_batches(courier_id=courier.courier_id, is_complete=False)
@@ -147,8 +147,7 @@ class Batch(models.Model):
         ("car", "car"),
     )
     batch_id = models.AutoField(primary_key=True)
-    assign_time = models.DateTimeField(auto_now_add=True, blank=True,
-                                       null=True)  # "yyyy-MM-ddTHH:mm:ssZ" .strftime("%Y-%m-%d%H:%M:%S")
+    assign_time = models.DateTimeField(auto_now_add=True, blank=True, null=True)
     is_complete = models.BooleanField(default=False)
     courier = models.ForeignKey(Courier, on_delete=models.CASCADE, blank=True, null=True)
     courier_type = models.CharField(max_length=4, choices=COURIER_TYPE_CHOICES, blank=True, null=True)
@@ -157,8 +156,8 @@ class Batch(models.Model):
 class Order(models.Model):
     order_id = models.PositiveIntegerField(primary_key=True, blank=False)
     weight = models.DecimalField(max_digits=4, decimal_places=2,
-                                 validators=[MinValueValidator(0.01), MaxValueValidator(50)],
-                                 blank=False)  # todo: fix 0.01 validation
+                                 validators=[MinValueValidator(0), MaxValueValidator(50)],
+                                 blank=False)
     region = models.PositiveIntegerField(blank=False)
     delivery_hours = ArrayField(base_field=models.CharField(max_length=15), blank=False)
     complete_time = models.DateTimeField(auto_now=False, blank=True, null=True)
