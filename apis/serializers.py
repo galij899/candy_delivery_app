@@ -34,7 +34,8 @@ class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of 
         fields = '__all__'
 
     def get_rating(self, obj):
-        return Courier.add_funcs.rating(obj.courier_id)
+        rating = Courier.add_funcs.rating(obj.courier_id)
+        return round(rating, 2) if isinstance(rating, float) else None
 
     def get_earnings(self, obj):
         return Courier.add_funcs.earnings(obj.courier_id)
@@ -59,14 +60,14 @@ class CourierSer(RunValidationMixin, serializers.ModelSerializer):
         model = Courier
         fields = '__all__'
 
-    def validate_regions(self, data):
-        if not isinstance(data, list):
-            raise ValidationError('not a list')
-        elif not all([isinstance(item, int) for item in data]):
-            raise ValidationError('not list of integers')
-        elif not all([item > 0 for item in data]):
-            raise ValidationError('not positive numbers')
-        return data
+    # def validate_regions(self, data):
+    #     if not isinstance(data, list):
+    #         raise ValidationError('not a list')
+    #     elif not all([isinstance(item, int) for item in data]):
+    #         raise ValidationError('not list of integers')
+    #     elif not all([item > 0 for item in data]):
+    #         raise ValidationError('not positive numbers')
+    #     return data
 
     def validate(self, data):
         if not data.keys() == self.get_fields().keys():

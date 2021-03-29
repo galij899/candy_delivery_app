@@ -29,8 +29,9 @@ class CourierView(viewsets.ModelViewSet):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
-
-        return Response(serializer.data)
+        return Response(
+            {key: serializer.data[key] for key in serializer.data.keys() if key not in ["earnings", "rating"]}
+        )
 
     def perform_create(self, serializer):
         return {'couriers': [{'id': instance.get('courier_id')} for instance in serializer.save().get("data")]}

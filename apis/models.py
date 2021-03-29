@@ -44,7 +44,11 @@ class OrderManager(models.Manager):
                 .exclude(order_id__in=good_orders) \
                 .update(batch_id=None)
 
-    def assign_order(self, courier_id):  # todo: correct order setting algorithm
+            # deletes batch if all orders from it are deleted
+            if not Order.objects.filter(batch_id=batch.batch_id).exists():
+                batch.delete()
+
+    def assign_order(self, courier_id):
         try:
             courier = Courier.objects.get(pk=courier_id)
         except:
