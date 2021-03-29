@@ -23,7 +23,7 @@ class CourierView(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        Order.test_man.check_after_update(instance)
+        Order.order_manager.check_after_update(instance)
 
         if getattr(instance, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
@@ -85,7 +85,7 @@ class OrderView(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def assign(self, request):
-        result = Order.test_man.assign_order(request.data.get("courier_id"))
+        result = Order.order_manager.assign_order(request.data.get("courier_id"))
         if result is None:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         elif isinstance(result, list):
@@ -100,7 +100,7 @@ class OrderView(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def complete(self, request):
-        completed = Order.test_man.complete_order(request.data)
+        completed = Order.order_manager.complete_order(request.data)
         if completed:
             return Response(data={"order_id": completed.order_id})
         else:

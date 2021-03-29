@@ -9,9 +9,10 @@ class RunValidationMixin:
     """
     Миксин для получения primary-key проблемной строки при валидации входных данных вместо ошибки
     """
+
     def run_validation(self, data):
         """
-        Overriding default method to save only pk of errors
+        Оверрайд дефолтного метода ради получения первичного ключа посылки с ошибкой, а не самой ошибки
         """
         try:
             valid = super().run_validation(data)
@@ -22,10 +23,11 @@ class RunValidationMixin:
                 raise e
             primary_key_field_name = self.Meta.model._meta.pk.name
             raise ValidationError({"id": data[primary_key_field_name]})
-                # "Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name],
-                #                                            e.detail))
+            # "Entity {0} : {1}. Caused by : {2}".format(primary_key_field_name, data[primary_key_field_name],
+            #                                            e.detail))
 
-class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of fields
+
+class CourierSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField()
     earnings = serializers.SerializerMethodField()
 
@@ -55,19 +57,10 @@ class CourierSerializer(serializers.ModelSerializer):  # todo: correct order of 
         return rep
 
 
-class CourierSer(RunValidationMixin, serializers.ModelSerializer):
+class SingleCourierSerializer(RunValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Courier
         fields = '__all__'
-
-    # def validate_regions(self, data):
-    #     if not isinstance(data, list):
-    #         raise ValidationError('not a list')
-    #     elif not all([isinstance(item, int) for item in data]):
-    #         raise ValidationError('not list of integers')
-    #     elif not all([item > 0 for item in data]):
-    #         raise ValidationError('not positive numbers')
-    #     return data
 
     def validate(self, data):
         if not data.keys() == self.get_fields().keys():
@@ -76,7 +69,7 @@ class CourierSer(RunValidationMixin, serializers.ModelSerializer):
 
 
 class CourierPostSerializer(serializers.Serializer):
-    data = CourierSer(many=True)
+    data = SingleCourierSerializer(many=True)
 
     def create(self, validated_data):
         couriers = validated_data['data']
@@ -89,6 +82,7 @@ class OrderSerializer(RunValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ("order_id", "weight", "region", "delivery_hours")
+
 
 class OrderPostSerializer(serializers.Serializer):
     data = OrderSerializer(many=True)
@@ -108,11 +102,6 @@ class OrderIdSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         prev = super().to_representation(instance)
         return {"id": prev.get("order_id")}
-
-
-class OrderAssignResponse(serializers.Serializer):
-    orders = OrderIdSerializer(many=True)
-    # assign_time = serializers.CharField()
 
 
 class BatchSerializer(serializers.ModelSerializer):

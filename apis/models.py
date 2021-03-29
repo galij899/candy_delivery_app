@@ -165,4 +165,4 @@ class Order(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.PROTECT, blank=True, null=True)
 
     objects = models.Manager()
-    test_man = OrderManager()
+    order_manager = OrderManager()
