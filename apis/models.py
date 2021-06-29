@@ -99,7 +99,7 @@ class CourierManager(models.Manager):
         """
         Эффективный запрос на получение рейтинга, быстрее и проще, чем ORM от Django
         """
-        query = f"""SELECT MIN(region_avg) FROM
+        query = """SELECT MIN(region_avg) FROM
                     (SELECT AVG(extract(epoch from (finish::timestamp - start::timestamp))) as region_avg FROM
                     (SELECT region, complete_time as finish,
                            CASE
@@ -108,10 +108,10 @@ class CourierManager(models.Manager):
                             END
                             AS start
                     FROM apis_order LEFT JOIN apis_batch ab on apis_order.batch_id = ab.batch_id
-                    WHERE ab.is_complete = True AND courier_id = {courier_id}) as sub
+                    WHERE ab.is_complete = True AND courier_id = %s) as sub
                     GROUP BY region) as mins;"""
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(query, [courier_id])
             t = cursor.fetchone()[0]
         return (60 * 60 - min(t, 60 * 60)) / (60 * 60) * 5 if t else None
 
